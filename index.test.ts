@@ -520,62 +520,6 @@ describe("itx-pdp", () => {
     expect(users.length).toBe(0);
   });
 
-  test("high concurrency with SET FOR UPDATE", async () => {
-    jest.setTimeout(60_000);
-    const CONCURRENCY = 12;
-
-    await prisma.user.create({
-      data: {
-        email: "x",
-        name: "y",
-        val: 1,
-      },
-    });
-
-    const promises = [...Array(CONCURRENCY)].map(() =>
-      prisma.$transaction(
-        async (transactionPrisma) => {
-          await transactionPrisma.$queryRaw`SELECT id from "User" where email = 'x' FOR UPDATE`;
-
-          const user = await transactionPrisma.user.findUnique({
-            rejectOnNotFound: true,
-            where: {
-              email: "x",
-            },
-          });
-
-          // Add a delay here to force the transaction to be open for longer
-          // this will increase the chance of deadlock in the itx transactions
-          // if deadlock is a possibility.
-          await sleep(100);
-
-          const updatedUser = await transactionPrisma.user.update({
-            where: {
-              email: "x",
-            },
-            data: {
-              val: user.val! + 1,
-            },
-          });
-
-          return updatedUser;
-        },
-        { timeout: 60000, maxWait: 60000 }
-      )
-    );
-
-    await Promise.allSettled(promises);
-
-    const finalUser = await prisma.user.findUnique({
-      rejectOnNotFound: true,
-      where: {
-        email: "x",
-      },
-    });
-
-    expect(finalUser.val).toEqual(CONCURRENCY + 1);
-  });
-
   describe("isolation levels", () => {
     test("invalid value", async () => {
       // @ts-ignore

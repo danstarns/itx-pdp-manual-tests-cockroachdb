@@ -112,28 +112,6 @@ describe("itx-pdp", () => {
     expect(users.length).toBe(0);
   });
 
-  test("postgresql: nested create", async () => {
-    const result = prisma.$transaction(async (tx) => {
-      await tx.user.create({
-        data: {
-          email: "user_1@website.com",
-        },
-      });
-
-      await prisma.$transaction(async (tx) => {
-        await tx.user.create({
-          data: {
-            email: "user_2@website.com",
-          },
-        });
-      });
-
-      return tx.user.findMany();
-    });
-
-    await expect(result).resolves.toHaveLength(2);
-  });
-
   /**
    * We don't allow certain methods to be called in a transaction
    */
